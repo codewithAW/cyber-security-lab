@@ -1,0 +1,27 @@
+#!/bin/bash
+
+echo "[+] Stopping MariaDB lab instance..."
+
+# 1. Stop systemd user service if active
+if systemctl --user is-active --quiet mariadb-lab 2>/dev/null; then
+    systemctl --user stop mariadb-lab
+    echo "[+] mariadb-lab user service stopped."
+fi
+
+# 2. Terminate any standalone processes targeting our datadir or /tmp
+PIDS=$(pgrep -f 'mariadbd.*(cybersecurity-lab|mariadb_data)' || true)
+
+if [ -n "$PIDS" ]; then
+    echo "[+] Terminating process $PIDS..."
+    kill $PIDS 2>/dev/null || true
+    sleep 2
+    PIDS=$(pgrep -f 'mariadbd.*(cybersecurity-lab|mariadb_data)' || true)
+    if [ -n "$PIDS" ]; then
+        echo "[!] Force killing remaining process..."
+        kill -9 $PIDS 2>/dev/null || true
+    fi
+fi
+
+rm -f /tmp/mysql.sock /tmp/mariadb-lab.pid /tmp/mariadb.pid
+
+echo "[✓] MariaDB successfully stopped."
